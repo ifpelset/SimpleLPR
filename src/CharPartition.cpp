@@ -11,7 +11,6 @@ CharPartition::CharPartition()
 IplImage **CharPartition::partChar(IplImage *srcImage)
 {
     IplImage *pImgSrc = NULL;
-    IplImage *pImg8uSmooth = NULL;       //高斯滤波后的图
     IplImage *pImgThreshold = NULL;
     IplImage *pImgResize = NULL;        //归一化为高90，宽409的图像
 
@@ -23,13 +22,12 @@ IplImage **CharPartition::partChar(IplImage *srcImage)
 
     int nWidth = 409, nHeight = 90;
 
-    pImg8uSmooth = cvCreateImage(cvSize(nWidth, nHeight), IPL_DEPTH_8U, 1);
     pImgThreshold = cvCreateImage(cvSize(nWidth, nHeight), IPL_DEPTH_8U, 1);
     pImgResize = cvCreateImage(cvSize(nWidth, nHeight), IPL_DEPTH_8U, 1);//归一化
 
+    // 其实就是将图像缩放成409*90
     cvResize(pImgSrc, pImgResize, CV_INTER_LINEAR); //线性插值
-    cvSmooth(pImgResize, pImg8uSmooth, CV_GAUSSIAN, 3, 0, 0);//高斯滤波
-    cvThreshold(pImg8uSmooth, pImgThreshold, 100, 255, CV_THRESH_BINARY);
+    cvThreshold(pImgResize, pImgThreshold, 100, 255, CV_THRESH_BINARY);
 
     // WIDTH 34 分隔符区域宽度
     // 409 整个车牌的宽度
@@ -60,7 +58,6 @@ IplImage **CharPartition::partChar(IplImage *srcImage)
         QMessageBox::warning(NULL, "警告", "识别失败，请选择其他图片");
         return NULL;
     }
-
 
     int min_value = 0, min_col = 0;//最小值及其所在列
     int oneright = 0, oneleft = 0, twoleft = 0, threeright = 0, fourleft = 0, fourright = 0, fiveleft = 0, fiveright = 0, sixleft = 0, sixright = 0, sevenleft = 0, sevenright = 0;
@@ -353,25 +350,26 @@ IplImage **CharPartition::partChar(IplImage *srcImage)
 
     // 释放资源
     cvReleaseImage(&pImgSrc);
-    cvReleaseImage(&pImg8uSmooth);
     cvReleaseImage(&pImgThreshold);
     cvReleaseImage(&pImgResize);
 
     return pImgChar;
 }
 
-bool CharPartition::findSeparator(int modle[], int sum[], int *begin, int *end)
+bool CharPartition::findSeparator(int templ[], int sum[], int *begin, int *end)
 {
     int m = WIDTH; // 34  分隔符总的宽度是2×D+R=34 mm
     int i, j, g;
     int subre[WIDTH] = { 0 };
 
     // 分隔符区域搜索算法
-    while (m > 7) {
+    while (m > 7) { // m为分隔符宽度，为34
         // 57->181  扩大范围，设定搜索范围在第2个字符的起始位置到第3个字符的结束位置
+        // templ模板为 (3, 3, 15, 15 ... 15, 15, 3, 3)
+        // sum垂直投影，像素值的和
         for (i = START; i + m < END; i++) {
             for (j = 0, g = i; j < m; j++, g++) {
-                subre[j] = modle[j] - sum[g];
+                subre[j] = templ[j] - sum[g];
             }
 
             j = 0;
@@ -387,8 +385,8 @@ bool CharPartition::findSeparator(int modle[], int sum[], int *begin, int *end)
         }
 
         // 没有找到分隔符区域  缩小模板
-        modle[m - 3] = modle[m - 1];
-        modle[m - 4] = modle[m - 2];
+        templ[m - 3] = templ[m - 1];
+        templ[m - 4] = templ[m - 2];
         m--;
     }
 

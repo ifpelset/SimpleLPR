@@ -27,7 +27,7 @@ IplImage * PlateLocation::locatePlate(const QString &srcImagePath)
 {
     IplImage *pImgSrc = NULL;
     IplImage *pImg8u = NULL;            //灰度图
-    IplImage *pImg8uSmooth = NULL;     //高斯滤波后的图
+    IplImage *pImg8uSmooth = NULL;     //中值滤波后的图
     IplImage *pImgCanny = NULL;        //边缘检测
     IplImage *pImgCanny1 = NULL;
     IplImage *pImgCanny2 = NULL;
@@ -50,8 +50,9 @@ IplImage * PlateLocation::locatePlate(const QString &srcImagePath)
     pImgCanny1 = cvCreateImage(cvGetSize(pImgSrc), IPL_DEPTH_8U, 1);
     pImgCanny2 = cvCreateImage(cvGetSize(pImgSrc), IPL_DEPTH_8U, 1);
     pImgdst = cvCreateImage(cvGetSize(pImgSrc), IPL_DEPTH_8U, 1);
+
     cvCvtColor(pImgSrc, pImg8u, CV_RGB2GRAY);
-    cvSmooth(pImg8u, pImg8uSmooth, CV_GAUSSIAN, 3, 0, 0);//高斯滤波
+    cvSmooth(pImg8u, pImg8uSmooth, CV_MEDIAN, 3, 0, 0);//中值滤波
     cvCanny(pImg8uSmooth, pImgCanny, 100, 200, 3);    //边缘检测
 
     int  i, j, k, g, sum = 0;
@@ -65,11 +66,13 @@ IplImage * PlateLocation::locatePlate(const QString &srcImagePath)
             if (S(pImgCanny, i, j) == 255)
                 sum += S(pImgCanny, i, j);
         }
-        // 横向 像素为255的点个数少于20个，则将该横向的所有像素值设置为0（即黑色处理）
-        if (sum<ROW_THR * 255)
+        // 横向像素为255的点个数少于20个，
+        // 则将该横向的所有像素值设置为0（即黑色处理）
+        if (sum < ROW_THR * 255)
             for (i = 0; i<pImgCanny->width; i++)
                 S(pImgCanny1, i, j) = 0;
     }
+
     //纵向扫描处理
     for (i = 0; i<pImgCanny->width; i++) {
         sum = 0;
@@ -88,12 +91,12 @@ IplImage * PlateLocation::locatePlate(const QString &srcImagePath)
     for (j = 0; j<pImgCanny1->height - MODLESIZE; j += 2) {
         for (i = 0; i<pImgCanny1->width - MODLESIZE; i += 2) {
             sum = 0;
-            // 此模版为3，3
+            // 此模版为3 * 3
             for (g = j; g <= j + MODLESIZE; g++)
                 for (k = i; k <= i + MODLESIZE; k++) {
                     sum += S(pImgCanny1, k, g);
                 }
-            //大于某阈值置为255，否则置为0
+            //大于某阈值(5)，则置为255，否则置为0
             if (sum >= COUNTER * 255) {
                 for (g = j; g <= j + MODLESIZE; g++)
                     for (k = i; k <= i + MODLESIZE; k++)
@@ -228,10 +231,11 @@ int PlateLocation::myDiffProj(IplImage *src, IplImage *dst)
         }
 
         r_max_value = r_sum[0];//寻找最大峰值
-        for (i = 0; i<pImg8uSmooth->height; i++)
-        if (r_max_value<r_sum[i]) {
-           r_max_value = r_sum[i];
-           r_max = i;
+        for (i = 0; i<pImg8uSmooth->height; i++) {
+            if (r_max_value<r_sum[i]) {
+               r_max_value = r_sum[i];
+               r_max = i;
+            }
         }
 
         //row_min最大峰值两侧波谷的较小值所在行,row_min1=0峰值左侧波谷,row_min2=0峰值右侧波谷

@@ -34,9 +34,11 @@ QString CharRecognition::recognizeChar(IplImage **srcIplImage)
         */
 
         for (i = 0; i < 38; i++) {
-            // Path of Windows OpenCV template pic
-            //sprintf(templatePath, "D:\\Res\\LrnRes\\C&C++\\Code\\Qt\\SimpleLPR\\imgs\\template\\%d.jpg", i);
-            sprintf(templatePath, "/Users/ifpelset/Develop/Code/PC/Qt/SimpleLPR/imgs/template/%d.jpg", i);
+            // If you use Windows, please uncomment this following code, and set the correct path of template floder.
+            sprintf(templatePath, "D:\\Res\\LrnRes\\C&C++\\Code\\Qt\\SimpleLPR\\imgs\\template\\%d.jpg", i);
+
+            // If you use Mac OS X, please uncomment this following code, and set the correct path of template floder.
+            //sprintf(templatePath, "/Users/ifpelset/Develop/Code/PC/Qt/SimpleLPR/imgs/template/%d.jpg", i);
             src1 = cvLoadImage(templatePath, 0);
 
             if (!src1) {
